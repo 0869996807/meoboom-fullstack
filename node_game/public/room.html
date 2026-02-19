@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+  <title>Phòng</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:#0b1020;color:#eef}
+    .wrap{max-width:900px;margin:0 auto;padding:16px}
+    .card{background:#121a33;border:1px solid #23305d;border-radius:14px;padding:14px;margin:10px 0}
+    button{font-size:16px;padding:10px;border-radius:10px;border:1px solid #2b3a70;background:#0f1730;color:#eef;cursor:pointer}
+    .list{max-height:45vh;overflow:auto;border:1px solid #23305d;border-radius:12px;padding:10px}
+    .evt{opacity:.9;font-size:14px;border-bottom:1px dashed #23305d;padding:8px 0}
+    a{color:#9bd}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/">← Lobby</a>
+  <h2 id="title">Phòng</h2>
+
+  <div class="card">
+    <div><b>Người chơi</b></div>
+    <div class="list" id="players"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <b>Sự kiện (log)</b>
+      <button id="refresh">🔄</button>
+    </div>
+    <div class="list" id="events"></div>
+  </div>
+</div>
+
+<script src="/config.js"></script>
+<script>
+const API = (window.__CONFIG__ && window.__CONFIG__.PHP_API_BASE) ? window.__CONFIG__.PHP_API_BASE.replace(/\/$/,"") : "";
+const qs = new URLSearchParams(location.search);
+const roomId = qs.get("room_id");
+const roomName = qs.get("room_name") || roomId;
+
+document.getElementById("title").textContent = "Phòng: " + roomName;
+
+async function apiGet(path){ const r = await fetch(API + path); return r.json(); }
+function esc(s){return String(s).replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+
+async function load(){
+  if(!API){ alert("Thiếu PHP_API_BASE"); return; }
+  const data = await apiGet("/api/room_state.php?room_id=" + encodeURIComponent(roomId));
+  if(!data.ok){ alert(data.error||"Lỗi"); return; }
+  document.getElementById("players").innerHTML =
+    (data.players||[]).map(p=>`<div class="evt">👤 ${esc(p.name)} ${p.connected ? "✅":"❌"}</div>`).join("");
+  document.getElementById("events").innerHTML =
+    (data.events||[]).slice().reverse().map(e=>`<div class="evt">[${esc(e.type)}] ${esc(e.actor_name||"")} ${esc(e.message||"")}</div>`).join("");
+}
+document.getElementById("refresh").onclick = load;
+load();
+setInterval(load, 4000);
+</script>
+</body>
+</html>
