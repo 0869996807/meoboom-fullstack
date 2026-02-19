@@ -1,7 +1,11 @@
 <?php
-require_once __DIR__ . "/config.php";
-$in = body_json();
-$code = strtoupper(trim($in["room_code"] ?? ""));
-if ($code === "") { http_response_code(400); echo json_encode(["error"=>"missing room_code"]); exit; }
-$pdo->prepare("UPDATE rooms SET status='closed', updated_at=NOW() WHERE room_code=:c")->execute([":c"=>$code]);
-echo json_encode(["ok"=>true]);
+require_once __DIR__ . "/utils.php";
+$data = body_json();
+$roomId = need($data, "room_id");
+
+$room = q($pdo, "SELECT id FROM rooms WHERE id=:id", [":id"=>$roomId])->fetch();
+if (!$room) fail("Room not found", 404);
+
+q($pdo, "UPDATE rooms SET status='closed', updated_at=now() WHERE id=:id", [":id"=>$roomId]);
+log_event($pdo, $roomId, "close", null, "Đóng phòng");
+ok(["room_id"=>$roomId,"status"=>"closed"]);

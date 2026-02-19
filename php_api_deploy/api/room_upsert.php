@@ -1,15 +1,16 @@
 <?php
-require_once __DIR__ . "/config.php";
-$in = body_json();
-$code = strtoupper(trim($in["room_code"] ?? ""));
-$mode = trim($in["mode"] ?? "classic");
-$status = trim($in["status"] ?? "open");
-$players = intval($in["players_count"] ?? 0);
-$started = intval($in["started"] ?? 0);
-if ($code === "") { http_response_code(400); echo json_encode(["error"=>"missing room_code"]); exit; }
+require_once __DIR__ . "/utils.php";
+$data = body_json();
+$roomName = need($data, "room_name");
+$maxPlayers = isset($data["max_players"]) ? (int)$data["max_players"] : 10;
+if ($maxPlayers <= 1 || $maxPlayers > 10) $maxPlayers = 10;
 
-$stmt = $pdo->prepare("INSERT INTO rooms(room_code, mode, status, players_count, started, updated_at)
-  VALUES(:c,:m,:s,:p,:st,NOW())
-  ON CONFLICT(room_code) DO UPDATE SET mode=EXCLUDED.mode, status=EXCLUDED.status, players_count=EXCLUDED.players_count, started=EXCLUDED.started, updated_at=NOW()");
-$stmt->execute([":c"=>$code, ":m"=>$mode, ":s"=>$status, ":p"=>$players, ":st"=>$started]);
-echo json_encode(["ok"=>true]);
+$roomId = uid("room_");
+try {
+  q($pdo, "INSERT INTO rooms(id,name,status,max_players) VALUES(:id,:name,'open',:m)",
+    [":id"=>$roomId, ":name"=>$roomName, ":m"=>$maxPlayers]);
+  log_event($pdo, $roomId, "create", null, "Tạo phòng: ".$roomName);
+} catch (Exception $e) {
+  fail("Room name already exists", 409);
+}
+ok(["room"=>["id"=>$roomId,"name"=>$roomName,"max_players"=>$maxPlayers]]);
