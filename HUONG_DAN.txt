@@ -1,0 +1,28 @@
+SỬA LẠI TỪ ĐẦU (SQL + PHP HIỆN DỮ LIỆU)
+
+Bạn có 2 service trên Render:
+
+1) PostgreSQL (Render)
+- New → PostgreSQL
+- Copy Host/DB/User/Pass/Port
+
+2) PHP API service
+- Deploy folder: php_api_deploy  (document root)
+- ENV: DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT
+- Import SQL: sql/init.sql
+- Test:
+  /api/rooms.php
+  /api/ranking.php
+
+3) Node Game service
+- Deploy folder: node_game
+- ENV: PHP_API_BASE = https://<domain-php-service>
+- Node proxy /api/* sang PHP (tránh CORS)
+- Node tự gọi:
+  - /api/room_upsert.php để lobby hiện phòng
+  - /api/room_close.php khi ván kết thúc
+  - /api/match_start.php, /api/match_end.php để lưu lịch sử + thứ hạng
+
+Lưu ý:
+- Room list chỉ hiện phòng status=open, players<10, updated trong 120s.
+- Nếu lobby không hiện: thường do PHP_API_BASE chưa set hoặc PHP service lỗi DB.
